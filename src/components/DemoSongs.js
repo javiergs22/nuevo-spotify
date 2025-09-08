@@ -54,7 +54,7 @@
       id: "demo9",
       title: "loco paranoico",
       artist: "Silvestre",
-      cover_image_url: "/imagenes/silvestre.jpg",
+      cover_image_url: "/imagenes/Silvestre.jpg",
     },
             {
       id: "demo10",
