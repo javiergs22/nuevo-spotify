@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useContext, useEffect, useState } from "react";
 import Image from "next/image";
@@ -10,9 +11,7 @@ import { demoSongs } from "./DemoSongs";
 
 export default function Allsongs() {
   const context = useContext(PlayerContext);
-
   const router = useRouter();
-  const [showLoginModal, setShowLoginModal] = useState(false);
 
   if (!context) {
     throw new Error("PlayerContext must be used within a PlayerProvider");
@@ -22,11 +21,12 @@ export default function Allsongs() {
 
   const [user, setUser] = useState(null);
   const [isCheckingUser, setIsCheckingUser] = useState(true);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // 1. Verifica si el usuario está logueado
+  // Verifica si el usuario está logueado
   useEffect(() => {
     const checkUser = async () => {
-      const { data, error } = await supabase.auth.getUser();
+      const { data } = await supabase.auth.getUser();
       if (data?.user) {
         setUser(data.user);
       }
@@ -35,35 +35,40 @@ export default function Allsongs() {
     checkUser();
   }, []);
 
+  // Fetch de canciones (si quieres cargar desde DB en el futuro)
   const getAllSongs = async () => {
     const { data, error } = await supabase.from("songs").select("*");
     if (error) {
-      console.error("fetchAllSongsError:", error.message);
+      console.error("Error al obtener canciones:", error.message);
     }
     return data;
   };
 
   const {
-    data: songs,
+    data: fetchedSongs,
     isLoading,
     error,
     isError,
   } = useQuery({
     queryFn: getAllSongs,
     queryKey: ["AllSongs"],
-    enabled: !!user, // Solo corre si hay usuario
+    enabled: true, // siempre intenta obtenerlas
   });
+
+  const songsToDisplay = demoSongs; // usar demoSongs siempre, puedes cambiarlo si deseas usar fetchedSongs
 
   const startPlayingSong = (songs, index) => {
     if (!user) {
-      setShowLoginModal(true); // Mostrar modal
+      setShowLoginModal(true); // Mostrar modal si no está logueado
       return;
     }
+
     setCurrentIndex(index);
     setQueue(songs);
   };
 
-  if (isCheckingUser || (user && isLoading)) {
+  // Cargando usuario o canciones
+  if (isCheckingUser || isLoading) {
     return (
       <div className="min-h-[130vh] bg-background p-4 my-15 lg:ml-80 rounded-lg mx-4">
         <h2 className="text-2xl text-white mb-3 font-semibold">New Songs</h2>
@@ -79,26 +84,15 @@ export default function Allsongs() {
     );
   }
 
-  if (user && isError) {
-    return (
-      <div className="min-h-[130vh] bg-background p-4 my-15 lg:ml-80 rounded-lg mx-4">
-        <h2 className="text-2xl text-white mb-3 font-semibold">New Songs</h2>
-        <h2 className="text-center text-white text-2xl">{error.message}</h2>
-      </div>
-    );
-  }
-
-  // ✅ Usa canciones reales si hay usuario, si no, canciones demo
-  const songsToDisplay = user ? songs : demoSongs;
-
   return (
     <div className="min-h-[80vh] bg-background p-4 my-15 lg:ml-80 rounded-lg mx-4">
       <h2 className="text-2xl text-white mb-3 font-semibold">New Songs</h2>
+
       <div className="grid gap-2 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 flex flex-wrap">
         {songsToDisplay?.map((song, index) => (
           <div
-            className="relative bg-background p-3 cursor-pointer rounded-md hover:bg-hover group"
             key={song.id}
+            className="relative bg-background p-3 cursor-pointer rounded-md hover:bg-hover group"
             onClick={() => startPlayingSong(songsToDisplay, index)}
           >
             <button
@@ -122,6 +116,8 @@ export default function Allsongs() {
           </div>
         ))}
       </div>
+
+      {/* Modal para login */}
       {showLoginModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-md p-6 shadow-md max-w-sm text-center">
@@ -131,16 +127,16 @@ export default function Allsongs() {
             </p>
             <div className="flex justify-center gap-4">
               <button
-                onClick={() => (window.location.href = "/")}
+                onClick={() => setShowLoginModal(false)}
                 className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300"
               >
-                Volver al inicio
+                Cancelar
               </button>
               <button
-                onClick={() => router.push("/login")} // Redirige al login manualmente si el usuario quiere
+                onClick={() => router.push("/login")}
                 className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
               >
-                Ir a iniciar sesión
+                Iniciar sesión
               </button>
             </div>
           </div>

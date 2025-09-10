@@ -27,7 +27,13 @@ export default function MusicPlayer() {
     throw new Error("PlayerContext must be used within a PlayerProvider");
   }
 
-  const { isQueueModalOpen, setIsQueueModalOpen, currentMusic, playNext, playPrev } = context;
+  const {
+    isQueueModalOpen,
+    setIsQueueModalOpen,
+    currentMusic,
+    playNext,
+    playPrev,
+  } = context;
 
   const togglePlayButton = () => {
     if (!audioRef.current) return;
@@ -41,7 +47,9 @@ export default function MusicPlayer() {
 
   const formatTime = (time) => {
     const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60).toString().padStart(2, "0");
+    const seconds = Math.floor(time % 60)
+      .toString()
+      .padStart(2, "0");
     return `${minutes}:${seconds}`;
   };
 
@@ -141,11 +149,11 @@ export default function MusicPlayer() {
 
   return (
     <div className="fixed bottom-0 left-0 w-full bg-black text-white px-4 py-4 shadow-md z-50">
-      <audio src={currentMusic.audio_url || ""} ref={audioRef}></audio>
+      <audio src={currentMusic.audio_url} ref={audioRef}></audio>
       <div className="max-w-8xl w-[95%] mx-auto flex items-center justify-between">
         <div className="flex gap-4 items-center">
           <Image
-            src={currentMusic.cover_image_url || ""}
+            src={currentMusic.cover_image_url}
             width={500}
             height={500}
             alt="Song Cover"
@@ -195,7 +203,10 @@ export default function MusicPlayer() {
         {/* Control de volumen */}
         <div className="flex items-center gap-2">
           {repeatSong ? (
-            <button onClick={() => setRepeatSong(false)} className="text-primary">
+            <button
+              onClick={() => setRepeatSong(false)}
+              className="text-primary"
+            >
               <LuRepeat1 />
             </button>
           ) : (
@@ -212,11 +223,17 @@ export default function MusicPlayer() {
           </button>
 
           {volume === 0 ? (
-            <button onClick={toggleMute} className="text-secondary-text text-xl cursor-pointer">
+            <button
+              onClick={toggleMute}
+              className="text-secondary-text text-xl cursor-pointer"
+            >
               <IoMdVolumeOff />
             </button>
           ) : (
-            <button onClick={toggleMute} className="text-secondary-text text-xl cursor-pointer">
+            <button
+              onClick={toggleMute}
+              className="text-secondary-text text-xl cursor-pointer"
+            >
               <IoMdVolumeHigh />
             </button>
           )}
@@ -234,4 +251,3 @@ export default function MusicPlayer() {
     </div>
   );
 }
-
