@@ -1,55 +1,68 @@
-import React from "react";
+import React, { useState } from "react";
 import { FaTrash } from "react-icons/fa";
 import { supabase } from "../../lib/SupabaseClient";
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function DeleteButton({ songId, imagePath, audioPath }) {
   const queryClient = useQueryClient();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const deleteSong = async () => {
-    // Borrar la imagen
+    const confirmed = window.confirm(
+      "¿Estás seguro de que deseas eliminar esta canción?"
+    );
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+
+    // Eliminar imagen
     const { error: imgError } = await supabase.storage
       .from("cover-images")
       .remove([imagePath]);
 
     if (imgError) {
-      console.log("ImageDeleteError:", imgError.message);
+      alert("Error al eliminar la imagen: " + imgError.message);
+      setIsDeleting(false);
       return;
     }
 
-    // Borrar el audio
+    // Eliminar audio
     const { error: audioError } = await supabase.storage
       .from("songs")
       .remove([audioPath]);
 
     if (audioError) {
-      console.log("AudioDeleteError:", audioError.message);
+      alert("Error al eliminar el audio: " + audioError.message);
+      setIsDeleting(false);
       return;
     }
 
-    // Borrar el registro en la tabla de canciones
+    // Eliminar registro en la base de datos
     const { error: deleteError } = await supabase
       .from("songs")
       .delete()
       .eq("id", songId);
 
     if (deleteError) {
-      console.log("TableDeleteError:", deleteError.message);
+      alert("Error al eliminar el registro: " + deleteError.message);
+      setIsDeleting(false);
       return;
     }
 
-    // Invalidar queries para refrescar la data
+    // Refrescar queries
     queryClient.invalidateQueries({ queryKey: ["allSongs"] });
     queryClient.invalidateQueries({ queryKey: ["userSongs"] });
+
+    setIsDeleting(false);
   };
 
   return (
     <button
       onClick={deleteSong}
-      className="text-secondary-text absolute right-2 top-6
-                 cursor-pointer hidden group-hover:block"
+      className="text-secondary-text absolute right-2 top-6 cursor-pointer hidden group-hover:block"
+      disabled={isDeleting}
     >
-      <FaTrash />
+      {isDeleting ? "Eliminando..." : <FaTrash />}
     </button>
   );
 }

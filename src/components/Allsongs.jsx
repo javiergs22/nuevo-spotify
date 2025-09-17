@@ -1,10 +1,10 @@
 
+
 "use client";
 import React, { useContext, useEffect, useState } from "react";
 import Image from "next/image";
 import { IoMdPlay } from "react-icons/io";
 import { supabase } from "../../lib/SupabaseClient";
-import { useQuery } from "@tanstack/react-query";
 import { PlayerContext } from "../../layouts/FrontendLayout";
 import { useRouter } from "next/navigation";
 import { demoSongs } from "./DemoSongs";
@@ -23,7 +23,7 @@ export default function Allsongs() {
   const [isCheckingUser, setIsCheckingUser] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // Verifica si el usuario está logueado
+  // Verificar si el usuario está logueado
   useEffect(() => {
     const checkUser = async () => {
       const { data } = await supabase.auth.getUser();
@@ -35,44 +35,23 @@ export default function Allsongs() {
     checkUser();
   }, []);
 
-  // Fetch de canciones (si quieres cargar desde DB en el futuro)
-  const getAllSongs = async () => {
-    const { data, error } = await supabase.from("songs").select("*");
-    if (error) {
-      console.error("Error al obtener canciones:", error.message);
-    }
-    return data;
-  };
-
-  const {
-    data: fetchedSongs,
-    isLoading,
-    error,
-    isError,
-  } = useQuery({
-    queryFn: getAllSongs,
-    queryKey: ["AllSongs"],
-    enabled: true, // siempre intenta obtenerlas
-  });
-
-  const songsToDisplay = demoSongs; // usar demoSongs siempre, puedes cambiarlo si deseas usar fetchedSongs
+  const songsToDisplay = demoSongs;
 
   const startPlayingSong = (songs, index) => {
     if (!user) {
-      setShowLoginModal(true); // Mostrar modal si no está logueado
+      setShowLoginModal(true);
       return;
     }
 
-    setCurrentIndex(index);
     setQueue(songs);
+    setCurrentIndex(index);
   };
 
-  // Cargando usuario o canciones
-  if (isCheckingUser || isLoading) {
+  if (isCheckingUser) {
     return (
       <div className="min-h-[130vh] bg-background p-4 my-15 lg:ml-80 rounded-lg mx-4">
         <h2 className="text-2xl text-white mb-3 font-semibold">New Songs</h2>
-        <div className="animate-pulse grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 flex flex-wrap">
+        <div className="animate-pulse grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {[...Array(10)].map((_, index) => (
             <div key={index}>
               <div className="w-full h-50 rounded-md mb-2 bg-hover"></div>
@@ -88,8 +67,8 @@ export default function Allsongs() {
     <div className="min-h-[80vh] bg-background p-4 my-15 lg:ml-80 rounded-lg mx-4">
       <h2 className="text-2xl text-white mb-3 font-semibold">New Songs</h2>
 
-      <div className="grid gap-2 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 flex flex-wrap">
-        {songsToDisplay?.map((song, index) => (
+      <div className="grid gap-2 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {songsToDisplay.map((song, index) => (
           <div
             key={song.id}
             className="relative bg-background p-3 cursor-pointer rounded-md hover:bg-hover group"
@@ -98,7 +77,7 @@ export default function Allsongs() {
             <button
               className="bg-primary w-12 h-12 rounded-full grid place-items-center absolute
                 bottom-8 opacity-0 right-5 group-hover:opacity-100 group-hover:bottom-18 transition-all 
-                duration-300 ease-in-out cursor-pointer"
+                duration-300 ease-in-out"
             >
               <IoMdPlay />
             </button>
@@ -117,7 +96,6 @@ export default function Allsongs() {
         ))}
       </div>
 
-      {/* Modal para login */}
       {showLoginModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-md p-6 shadow-md max-w-sm text-center">

@@ -1,7 +1,9 @@
+
+
 import Image from "next/image";
 import React, { useContext } from "react";
-import { supabase } from "../../lib/SupabaseClient";
 import { useQuery } from "@tanstack/react-query";
+import { supabase } from "../../lib/SupabaseClient";
 import DeleteButton from "./DeleteButton";
 import { PlayerContext } from "../../layouts/FrontendLayout";
 
@@ -11,53 +13,59 @@ export default function UserSongs({ userId }) {
   if (!context) {
     throw new Error("PlayerContext must be used within a PlayerProvider");
   }
+
   const { setQueue, setCurrentIndex } = context;
 
-  const getUserSongs = async () => {
-    const { error, data } = await supabase
+  const fetchUserSongs = async () => {
+    const { data, error } = await supabase
       .from("songs")
       .select("*")
       .eq("user_id", userId);
-    if (error) {
-      console.log("fetchUserSongsError:", error.message);
-    }
+
+    if (error) throw new Error(error.message);
     return data;
   };
 
   const {
     data: songs,
     isLoading,
-    error,
     isError,
+    error,
   } = useQuery({
-    queryFn: getUserSongs,
     queryKey: ["userSongs", userId],
+    queryFn: fetchUserSongs,
   });
 
-  const startPlayingSong = (songs, index) => {
-    setCurrentIndex(index);
+  const handlePlay = (index) => {
     setQueue(songs);
+    setCurrentIndex(index);
   };
 
-  if (isLoading)
+  if (isLoading) {
     return (
       <div>
-        {[...Array(10)].map((_, index) => (
-          <div key={index} className="flex gap-2 animate-pulse mb-4">
+        {[...Array(10)].map((_, i) => (
+          <div key={i} className="flex gap-2 animate-pulse mb-4">
             <div className="w-10 h-10 rounded-md bg-hover"></div>
             <div className="h-5 w-[80%] rounded-md bg-hover"></div>
           </div>
         ))}
       </div>
     );
+  }
 
-  if (isError)
-    return <h2 className="text-center text-white text-2xl">{error.message}</h2>;
+  if (isError) {
+    return (
+      <h2 className="text-center text-white text-2xl">
+        {error.message || "Ocurrió un error"}
+      </h2>
+    );
+  }
 
   if (!songs || songs.length === 0) {
     return (
       <h1 className="text-center text-white text-sm">
-        No tienes musica en tu libreria
+        No tienes música en tu librería
       </h1>
     );
   }
@@ -66,9 +74,9 @@ export default function UserSongs({ userId }) {
     <div>
       {songs.map((song, index) => (
         <div
-          className="relative flex gap-2 items-center cursor-pointer mb-4 p-2 rounded-lg hover:bg-hover group"
           key={song.id}
-          onClick={() => startPlayingSong(songs, index)}
+          className="relative flex gap-2 items-center cursor-pointer mb-4 p-2 rounded-lg hover:bg-hover group"
+          onClick={() => handlePlay(index)}
         >
           <DeleteButton
             songId={song.id}

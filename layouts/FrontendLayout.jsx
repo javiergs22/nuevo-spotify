@@ -1,33 +1,40 @@
 "use client";
-import MusicPlayer from "../src/components/MusicPlayer";
-import Navbar from "../src/components/navbar";
-import Queue from "../src/components/Queue";
-import Sidebar from "../src/components/Sidebar";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
 import { createContext, useEffect, useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
+import Navbar from "../src/components/navbar";
+import Sidebar from "../src/components/Sidebar";
+import Queue from "../src/components/Queue";
+import MusicPlayer from "../src/components/MusicPlayer";
 
-export const PlayerContext = createContext(undefined);
+// Crear el contexto con valor inicial null
+export const PlayerContext = createContext(null);
+
+// Crear una sola instancia del query client
+const queryClient = new QueryClient();
 
 export function FrontendLayout({ children }) {
-  const queryclient = new QueryClient();
   const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
   const [currentMusic, setCurrentMusic] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [queue, setQueue] = useState([]);
 
+  // Función para avanzar en la cola
   const playNext = () => {
     if (currentIndex < queue.length - 1) {
-      setCurrentIndex((prevIndex) => prevIndex + 1);
+      setCurrentIndex((prev) => prev + 1);
     }
   };
 
+  // Función para retroceder en la cola
   const playPrev = () => {
     if (currentIndex > 0) {
-      setCurrentIndex((prevIndex) => prevIndex - 1);
+      setCurrentIndex((prev) => prev - 1);
     }
   };
 
+  // Actualizar música actual cuando cambie el índice o la cola
   useEffect(() => {
     if (queue.length > 0 && currentIndex >= 0 && currentIndex < queue.length) {
       setCurrentMusic(queue[currentIndex]);
@@ -35,7 +42,7 @@ export function FrontendLayout({ children }) {
   }, [currentIndex, queue]);
 
   return (
-    <QueryClientProvider client={queryclient}>
+    <QueryClientProvider client={queryClient}>
       <PlayerContext.Provider
         value={{
           isQueueModalOpen,
@@ -46,18 +53,18 @@ export function FrontendLayout({ children }) {
           setQueue,
           playNext,
           playPrev,
-          setCurrentIndex,
           currentIndex,
+          setCurrentIndex,
         }}
       >
-        <div className="min-h-screen">
+        <div className="min-h-screen flex flex-col">
           <Navbar />
-          <main>
+          <div className="flex flex-1">
             <Sidebar />
+            <main className="flex-1 p-4">{children}</main>
             <Queue />
-            {currentMusic && <MusicPlayer />}
-            {children}
-          </main>
+          </div>
+          {currentMusic && <MusicPlayer />}
         </div>
       </PlayerContext.Provider>
     </QueryClientProvider>
@@ -65,4 +72,3 @@ export function FrontendLayout({ children }) {
 }
 
 export default FrontendLayout;
-

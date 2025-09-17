@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
-import Image from "next/image"; // Si no usas Next.js, cambia esto por un <img> normal o tu componente de imagen preferido
+import Image from "next/image";
 import {
   IoMdPause,
   IoMdPlay,
@@ -18,8 +18,8 @@ export default function MusicPlayer() {
   const [volume, setVolume] = useState(50);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [previousVolume, setPreviousVolume] = useState(50);
   const [repeatSong, setRepeatSong] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
 
   const context = useContext(PlayerContext);
 
@@ -35,14 +35,42 @@ export default function MusicPlayer() {
     playPrev,
   } = context;
 
-  const togglePlayButton = () => {
-    if (!audioRef.current) return;
+  const togglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
     if (isPlaying) {
-      audioRef.current.pause();
+      audio.pause();
     } else {
-      audioRef.current.play();
+      audio.play();
     }
     setIsPlaying(!isPlaying);
+  };
+
+  const toggleMute = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const newMuteState = !isMuted;
+    setIsMuted(newMuteState);
+    audio.volume = newMuteState ? 0 : volume / 100;
+  };
+
+  const handleSeek = (e) => {
+    const newTime = parseFloat(e.target.value);
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime;
+    }
+    setCurrentTime(newTime);
+  };
+
+  const handleVolumeChange = (e) => {
+    const vol = parseInt(e.target.value, 10);
+    setVolume(vol);
+    setIsMuted(vol === 0);
+    if (audioRef.current) {
+      audioRef.current.volume = vol / 100;
+    }
   };
 
   const formatTime = (time) => {
@@ -51,37 +79,6 @@ export default function MusicPlayer() {
       .toString()
       .padStart(2, "0");
     return `${minutes}:${seconds}`;
-  };
-
-  const handleSeek = (event) => {
-    const newTime = parseFloat(event.target.value);
-    if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
-      setCurrentTime(newTime);
-    }
-  };
-
-  const handleVolumeChange = (event) => {
-    const vol = parseInt(event.target.value, 10);
-    setVolume(vol);
-    if (audioRef.current) {
-      audioRef.current.volume = vol / 100;
-    }
-  };
-
-  const toggleMute = () => {
-    if (volume === 0) {
-      setVolume(previousVolume);
-      if (audioRef.current) {
-        audioRef.current.volume = previousVolume / 100;
-      }
-    } else {
-      setPreviousVolume(volume);
-      setVolume(0);
-      if (audioRef.current) {
-        audioRef.current.volume = 0;
-      }
-    }
   };
 
   useEffect(() => {
@@ -103,26 +100,14 @@ export default function MusicPlayer() {
   }, []);
 
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume / 100;
-    }
-  }, [volume]);
-
-  useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !currentMusic) return;
 
-    const playAudio = async () => {
-      try {
-        await audio.play();
-        setIsPlaying(true);
-      } catch (error) {
-        console.log("Audioplay Error:", error);
-        setIsPlaying(false);
-      }
-    };
-
-    playAudio();
+    audio.src = currentMusic.audio_url;
+    audio
+      .play()
+      .then(() => setIsPlaying(true))
+      .catch(() => setIsPlaying(false));
   }, [currentMusic]);
 
   useEffect(() => {
@@ -139,7 +124,6 @@ export default function MusicPlayer() {
     };
 
     audio.addEventListener("ended", handleEnded);
-
     return () => {
       audio.removeEventListener("ended", handleEnded);
     };
@@ -149,8 +133,9 @@ export default function MusicPlayer() {
 
   return (
     <div className="fixed bottom-0 left-0 w-full bg-black text-white px-4 py-4 shadow-md z-50">
-      <audio src={currentMusic.audio_url} ref={audioRef}></audio>
+      <audio ref={audioRef} />
       <div className="max-w-8xl w-[95%] mx-auto flex items-center justify-between">
+        {/* Song Info */}
         <div className="flex gap-4 items-center">
           <Image
             src={currentMusic.cover_image_url}
@@ -164,87 +149,69 @@ export default function MusicPlayer() {
           </div>
         </div>
 
-        {/* Controles de sonido */}
+        {/* Player Controls */}
         <div className="max-w-[400px] w-full flex items-center flex-col gap-3">
           <div className="flex gap-4">
-            <button className="text-xl text-secondary-text" onClick={playPrev}>
+            <button onClick={playPrev} className="text-xl text-secondary-text">
               <IoMdSkipBackward />
             </button>
 
             <button
-              onClick={togglePlayButton}
+              onClick={togglePlay}
               className="bg-white text-xl text-black w-10 h-10 rounded-full grid place-items-center"
             >
               {isPlaying ? <IoMdPause /> : <IoMdPlay />}
             </button>
 
-            <button className="text-xl text-secondary-text" onClick={playNext}>
+            <button onClick={playNext} className="text-xl text-secondary-text">
               <IoMdSkipForward />
             </button>
           </div>
+
+          {/* Seek Bar */}
           <div className="w-full flex justify-center items-center gap-2">
             <span>{formatTime(currentTime)}</span>
-            <div>
-              <input
-                onChange={handleSeek}
-                type="range"
-                min="0"
-                max={duration}
-                value={currentTime}
-                className="w-full outline-none h-1 bg-zinc-700 rounded-md appearance-none accent-white"
-              />
-            </div>
+            <input
+              onChange={handleSeek}
+              type="range"
+              min="0"
+              max={duration}
+              value={currentTime}
+              className="w-full h-1 bg-zinc-700 rounded-md appearance-none accent-white"
+            />
             <span className="text-secondary-text font-normal text-sm">
               {formatTime(duration)}
             </span>
           </div>
         </div>
 
-        {/* Control de volumen */}
+        {/* Volume and Extras */}
         <div className="flex items-center gap-2">
-          {repeatSong ? (
-            <button
-              onClick={() => setRepeatSong(false)}
-              className="text-primary"
-            >
-              <LuRepeat1 />
-            </button>
-          ) : (
-            <button onClick={() => setRepeatSong(true)}>
-              <LuRepeat />
-            </button>
-          )}
+          <button
+            onClick={() => setRepeatSong(!repeatSong)}
+            className={repeatSong ? "text-primary" : ""}
+          >
+            {repeatSong ? <LuRepeat1 /> : <LuRepeat />}
+          </button>
 
           <button
             onClick={() => setIsQueueModalOpen(!isQueueModalOpen)}
-            className="text-secondary-text text-xl cursor-pointer"
+            className="text-secondary-text text-xl"
           >
             <MdOutlineQueueMusic />
           </button>
 
-          {volume === 0 ? (
-            <button
-              onClick={toggleMute}
-              className="text-secondary-text text-xl cursor-pointer"
-            >
-              <IoMdVolumeOff />
-            </button>
-          ) : (
-            <button
-              onClick={toggleMute}
-              className="text-secondary-text text-xl cursor-pointer"
-            >
-              <IoMdVolumeHigh />
-            </button>
-          )}
-          <p className="text-white">Volumen: {volume}</p>
+          <button onClick={toggleMute} className="text-secondary-text text-xl">
+            {isMuted || volume === 0 ? <IoMdVolumeOff /> : <IoMdVolumeHigh />}
+          </button>
+
           <input
             onChange={handleVolumeChange}
             value={volume}
             type="range"
             min="0"
             max="100"
-            className="w-[100px] outline-none h-1 bg-zinc-700 appearance-none accent-white"
+            className="w-[100px] h-1 bg-zinc-700 appearance-none accent-white"
           />
         </div>
       </div>
