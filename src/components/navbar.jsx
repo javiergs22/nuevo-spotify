@@ -8,16 +8,20 @@ import { GoSearch } from "react-icons/go";
 import { useState } from "react";
 import useUserSession from "../../custom-hooks/useUserSession";
 import LogoutUser from "../../lib/auth/logoutUser";
+import { createClient } from "@supabase/supabase-js";
 
-// Importa las canciones
-import { demoSongs } from "./DemoSongs";
+// Configura tu cliente de Supabase (usa variables de entorno)
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 export default function Navbar() {
   const router = useRouter();
   const { session, loading } = useUserSession();
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [filteredSongs, setFilteredSongs] = useState([]);
+  const [filteredAlbuns, setFilteredAlbuns] = useState([]);
 
   const handleLogout = async () => {
     const result = await LogoutUser();
@@ -26,15 +30,25 @@ export default function Navbar() {
     }
   };
 
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     if (e.key === "Enter" && searchTerm.trim()) {
-      const filtered = demoSongs.filter(
-        (song) =>
-          song.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          song.artist.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const { data, error } = await supabase
+        .from("albuns")
+        .select("*")
+        .ilike("title", `%${searchTerm}%`);
 
-      setFilteredSongs(filtered);
+      if (!error && data.length > 0) {
+        setFilteredAlbuns(data);
+      } else {
+        // También buscar por artista si no hay resultados por título
+        const { data: artistData } = await supabase
+          .from("albuns")
+          .select("*")
+          .ilike("artist", `%${searchTerm}%`);
+
+        setFilteredAlbuns(artistData || []);
+      }
+
       setShowModal(true);
     }
   };
@@ -42,6 +56,7 @@ export default function Navbar() {
   const closeModal = () => {
     setShowModal(false);
     setSearchTerm("");
+    setFilteredAlbuns([]);
   };
 
   return (
@@ -85,9 +100,11 @@ export default function Navbar() {
             <Link href="#" className="hover:text-white">
               Support
             </Link>
-            <Link href="#" className="hover:text-white">
-              Download
-            </Link>
+            {!loading && session?.user?.email === "javier@gmail.com" && (
+              <Link href="/upload-list" className="hover:text-white font-bold">
+                Download
+              </Link>
+            )}
           </div>
         </div>
 
@@ -118,28 +135,27 @@ export default function Navbar() {
             <h2 className="text-xl font-semibold mb-4 text-gray-800">
               Resultados
             </h2>
-            {filteredSongs.length > 0 ? (
-              <ul className="space-y-6">
-                {filteredSongs.map((song) => (
-                  <li key={song.id} className="text-gray-700 border-b pb-4">
-                    <p className="text-lg font-bold">{song.title}</p>
-                    <p className="italic mb-2 text-gray-600">{song.artist}</p>
 
-                    {/* Imagen del artista */}
-                    {song.cover_image_url && (
+            {filteredAlbuns.length > 0 ? (
+              <ul className="space-y-6">
+                {filteredAlbuns.map((album) => (
+                  <li key={album.id} className="text-gray-700 border-b pb-4">
+                    <p className="text-lg font-bold">{album.title}</p>
+                    <p className="italic mb-2 text-gray-600">{album.artist}</p>
+
+                    {album.cover_image_url && (
                       <Image
-                        src={song.cover_image_url}
-                        alt={`Imagen de ${song.artist}`}
+                        src={album.cover_image_url}
+                        alt={`Imagen de ${album.artist}`}
                         width={64}
                         height={64}
                         className="rounded mb-3"
                       />
                     )}
 
-                    {/* Reproductor de audio */}
-                    {song.audio_url && (
+                    {album.audio_url && (
                       <audio controls className="w-full mt-2">
-                        <source src={song.audio_url} type="audio/mp3" />
+                        <source src={album.audio_url} type="audio/mp3" />
                         Tu navegador no soporta el elemento de audio.
                       </audio>
                     )}
@@ -149,6 +165,7 @@ export default function Navbar() {
             ) : (
               <p className="text-gray-600">No se encontraron resultados.</p>
             )}
+
             <button
               onClick={closeModal}
               className="mt-6 bg-black text-white px-4 py-2 rounded hover:bg-gray-800"

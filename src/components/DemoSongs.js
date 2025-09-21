@@ -8,6 +8,7 @@
       artist: "Karol G",
       cover_image_url: "/imagenes/karol.jpg", 
       audio_url: "/audio/provenza.mp3",
+      date: "abril 2022",
     },
     {
       id: "demo2",

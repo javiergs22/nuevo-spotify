@@ -1,13 +1,11 @@
-
-
 "use client";
+
 import React, { useContext, useEffect, useState } from "react";
 import Image from "next/image";
 import { IoMdPlay } from "react-icons/io";
 import { supabase } from "../../lib/SupabaseClient";
 import { PlayerContext } from "../../layouts/FrontendLayout";
 import { useRouter } from "next/navigation";
-import { demoSongs } from "./DemoSongs";
 
 export default function Allsongs() {
   const context = useContext(PlayerContext);
@@ -20,65 +18,72 @@ export default function Allsongs() {
   const { setQueue, setCurrentIndex } = context;
 
   const [user, setUser] = useState(null);
-  const [isCheckingUser, setIsCheckingUser] = useState(true);
+  const [songsByCategory, setSongsByCategory] = useState({});
+  const [loading, setLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // Verificar si el usuario está logueado
   useEffect(() => {
     const checkUser = async () => {
       const { data } = await supabase.auth.getUser();
-      if (data?.user) {
-        setUser(data.user);
-      }
-      setIsCheckingUser(false);
+      if (data?.user) setUser(data.user);
     };
     checkUser();
   }, []);
 
-  const songsToDisplay = demoSongs;
+  useEffect(() => {
+    const fetchSongs = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("albuns")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-  const startPlayingSong = (songs, index) => {
+      if (error) {
+        console.error("Error fetching songs:", error.message);
+        setLoading(false);
+        return;
+      }
+
+      const grouped = {};
+
+      data.forEach((song) => {
+        const category = song.category || "OTROS";
+        if (!grouped[category]) grouped[category] = [];
+
+        // Limita solo la categoría "VALLENATOS" a 10 canciones
+        if (category === "VALLENATOS" && grouped[category].length >= 10) return;
+
+        grouped[category].push(song);
+      });
+
+      setSongsByCategory(grouped);
+      setLoading(false);
+    };
+
+    fetchSongs();
+  }, []);
+
+  const startPlayingSong = (songsList, index) => {
     if (!user) {
       setShowLoginModal(true);
       return;
     }
 
-    setQueue(songs);
+    setQueue(songsList);
     setCurrentIndex(index);
   };
 
-  if (isCheckingUser) {
-    return (
-      <div className="min-h-[130vh] bg-background p-4 my-15 lg:ml-80 rounded-lg mx-4">
-        <h2 className="text-2xl text-white mb-3 font-semibold">New Songs</h2>
-        <div className="animate-pulse grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {[...Array(10)].map((_, index) => (
-            <div key={index}>
-              <div className="w-full h-50 rounded-md mb-2 bg-hover"></div>
-              <div className="h-3 w-[80%] bg-hover rounded-md"></div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-[80vh] bg-background p-4 my-15 lg:ml-80 rounded-lg mx-4">
-      <h2 className="text-2xl text-white mb-3 font-semibold">New Songs</h2>
-
+  const renderCategorySection = (categoryName, songs) => (
+    <div className="mb-8" key={categoryName}>
+      <h2 className="text-2xl text-white mb-3 font-semibold">{categoryName}</h2>
       <div className="grid gap-2 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {songsToDisplay.map((song, index) => (
+        {songs.map((song, index) => (
           <div
             key={song.id}
             className="relative bg-background p-3 cursor-pointer rounded-md hover:bg-hover group"
-            onClick={() => startPlayingSong(songsToDisplay, index)}
+            onClick={() => startPlayingSong(songs, index)}
           >
-            <button
-              className="bg-primary w-12 h-12 rounded-full grid place-items-center absolute
-                bottom-8 opacity-0 right-5 group-hover:opacity-100 group-hover:bottom-18 transition-all 
-                duration-300 ease-in-out"
-            >
+            <button className="bg-primary w-12 h-12 rounded-full grid place-items-center absolute bottom-8 opacity-0 right-5 group-hover:opacity-100 group-hover:bottom-18 transition-all duration-300 ease-in-out">
               <IoMdPlay />
             </button>
             <Image
@@ -95,7 +100,29 @@ export default function Allsongs() {
           </div>
         ))}
       </div>
+    </div>
+  );
 
+  return (
+    <div className="min-h-[90vh] bg-background p-4 my-15 lg:ml-80 rounded-lg mx-4">
+      {loading ? (
+        <div className="animate-pulse grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {[...Array(10)].map((_, index) => (
+            <div key={index}>
+              <div className="w-full h-50 rounded-md mb-2 bg-hover"></div>
+              <div className="h-3 w-[80%] bg-hover rounded-md"></div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          {Object.entries(songsByCategory).map(([category, songs]) =>
+            renderCategorySection(category, songs)
+          )}
+        </>
+      )}
+
+      {/* Modal de login */}
       {showLoginModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-md p-6 shadow-md max-w-sm text-center">
